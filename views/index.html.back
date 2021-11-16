@@ -1,0 +1,195 @@
+<html>
+<link href="https://fonts.googleapis.com/css?family=Roboto+Mono&display=swap" rel="stylesheet">
+
+<style>
+html, body {
+	font-family:Roboto, "Helvetica Neue", sans-serif;
+	margin:0px;
+	padding:0px;
+}
+.header {
+	background: #1a73e8;
+	color: white;
+}
+.withscroll  {
+	max-height: 15rem;
+	overflow-y: auto;
+}
+h1 {
+	font-size: 1.5rem;
+	font-weight: normal;
+	padding: 2px;
+	margin: 5px;
+	display: inline-block;
+}
+input {
+	border: 1px solid lightgrey;
+	padding: 4px 10px;
+	border-radius: 5px;
+	margin-left: 20px;
+	font-size: 1rem;			
+		
+}
+a {
+	color: #3367d6;
+	text-decoration: none;
+}
+.filtered thead td {
+	background: lightgrey;
+	padding: 4px;	
+}
+.filtered td {
+	vertical-align: top;
+	border-bottom: 1px solid #ccc;
+}
+
+.rol, .permission {
+	font-family: "Roboto mono", "Lucida Console", "Courier New";
+	font-size: 0.8rem;
+	display: block;
+	border-bottom: 1px solid #ccc;
+}
+
+.title {
+	font-family: "Roboto mono", "Lucida Console", "Courier New";
+	font-size: 0.8rem;
+	padding: 2px;
+	background: #3367d6;
+	color: white;
+}
+.remove {
+	background: white;
+	color: #3367d6;
+	margin: 2px 4px;
+	padding: 0px 4px;
+	border-radius: 15px;
+}
+.common {
+	color: gray;
+}
+</style>
+<div id="app">
+  <div class="header">
+    <h1>Google Cloud Role/Permission explorer</h1>
+    <input ref="filtertext" v-model="filtertext" v-on:change="filter()" placeholder="Search rol or permission"/></span>
+  </div>
+  <p style="padding:5px">Filter roles or permissions with text filter. Click multiple on roles to show and compare permissions included in selected roles. Click on permission to show roles that contain that permission. Role list updated on 28/01/202</p>
+  <div><table class="filtered" width="100%">
+  <thead><tr><td>Roles</td><td>Permissions</td><td>Roles with permission</td></tr></thead>
+  <tr>
+    <td><div class="withscroll"><a href="#" @click="selectRol(rol)" class="rol" v-for="rol of filteredRoles">{{rol}}</a></div></td>
+    <td><div class="withscroll"><a href="#" @click="selectPermission(permission)" class="permission" v-for="permission of filteredPermissions">{{permission}}</a></div></td>
+    <td><div class="withscroll"><a href="#" @click="selectRol(rol)" class="rol" v-for="rol of rolesWithPermission">{{rol}}</a></div></td>
+  </tr>
+  </table>
+  <table>
+    <tr>
+      <td style="vertical-align:top" v-for="r of rolesTable">
+        <div class="title">{{r.title}}<a class="remove" href="#" @click="remove(r.title)">x</a></div>
+        <a href="#" class="permission" :class="{common:permission.count==rolesTable.length}" v-for="permission of r.perms" @click="selectPermission(permission.perm)" >{{permission.perm}}</a>
+      </td>
+    </tr>
+  </table>
+
+
+
+  </div>
+
+
+
+
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+<script>
+    const loadData = async () => {
+      const permissions = await (await fetch('/roles')).json();
+      //console.log(permissions);
+      const dictByPermission = permissions.reduce((ac, item) => {
+        ac[item[0]] = item[1];
+        return ac;
+      }, {});
+		  const dictByRole = {};
+      permissions.forEach(([permission, roles]) => {
+        roles.forEach(rol => {
+          dictByRole[rol] = (dictByRole[rol] || []).concat(permission)
+        })
+      });
+      //console.log(dictByPermission);
+      return [dictByPermission, dictByRole];
+    }
+    
+    const loadVue = ([dictByPermission, dictByRole]) => {
+
+      v=new Vue({
+        el:'#app',
+        data: {
+          filtertext: '',
+          dictByPermission,
+          dictByRole,
+          roles: [],
+          permission: ''
+        },
+        methods: {
+          remove: function(rol){
+            this.roles = this.roles.filter(r=>r!=rol);
+
+          },
+          selectRol: function(rol) {
+            this.roles.push(rol);
+          },
+          filter: ()=>{
+          },
+          selectPermission: function(perm){
+            this.permission=perm;
+          }
+        },
+        computed: {
+          rolesWithPermission: function(){
+            return dictByPermission[this.permission];
+          },
+          filteredPermissions: function(){
+            var txt = this.filtertext;
+            if (txt.length<3) return [];
+            return Object.keys(dictByPermission).filter( r=> r.toUpperCase().indexOf(txt.toUpperCase())>=0)
+          },
+          filteredRoles: function(){
+            var txt = this.filtertext;
+            if (txt.length<3) return [];
+            return Object.keys(dictByRole).filter( r=> r.toUpperCase().indexOf(txt.toUpperCase())>=0)
+          },
+          rolesTable : function(){
+            var count = this.roles.reduce( (acc,r)=>{
+              dictByRole[r].forEach( p=> acc[p] = (acc[p] || 0)+1);
+              return acc;
+            },{});
+            return this.roles.map( r=>{
+              var perms = dictByRole[r].map( p=>({
+                perm: p,
+                count: count[p]
+              })).sort( (a,b)=> a.count>b.count?-1:1);
+              return {
+                title:r,
+                perms 
+              }
+            });
+          }
+        },
+        mounted: function(){
+          this.$refs.filtertext.focus();
+        }
+        });
+      
+  };
+  
+  const main = async() => {
+    loadVue(await loadData());    
+  }
+  main();
+
+
+	</script>
+
+</html>

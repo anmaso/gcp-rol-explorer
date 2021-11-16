@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Google Cloud Role/Permission explorer</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel = "icon" type = "image/png" href = "https://cdn.glitch.com/fa3782e0-45c7-4729-9388-7b6231753686%2Fgoogle-IAM_ADMIN_SECTION.png?v=1587378513668">
+
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <style>
+      html, body {
+          font-family:Roboto, "Helvetica Neue", sans-serif;
+          margin:0px;
+          padding:0px;
+      }
+      .scroll {
+          min-height: 100px;
+          max-height: 270px;
+          overflow-y: auto;
+      }
+      .card {
+         overflow: hidden;
+      }
+      .card-header {
+        padding: 4px 8px;
+      }
+      .list-group-item {
+        /*font-size: 0.9rem;*/
+        padding: 2px 5px;
+        cursor: pointer;
+      }
+      .card-header {
+        font-weight: bold;
+      }
+      .container-fluid {
+        padding-top: 1rem;
+      }
+      .selected-role-wrapper .card-header {
+        font-size: 0.9rem;
+  
+      }
+      .selected-role-wrapper .list-group-item {
+        /*font-size: 0.9rem;*/
+      }
+      .card .close {
+        position: absolute;
+        top: 0;
+        right: 0;
+        padding: 5px;
+      }
+      .loading-wrapper {
+        position: absolute;
+        top: 56px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 30;
+        background-color: white;
+        padding-top:300px;
+      }
+      .list-group-item.active {
+        border: none;
+      }
+      .main {
+        height: calc(100vh - 56px);
+      }
+      .right-panel {
+        width: 300px;    
+        box-shadow: -1px 0 3px rgba(0,0,0,0.3);
+        overflow-x: hidden;
+      }
+      .text-monospace {
+        font-family: "Roboto mono" !important;
+        font-size: .8rem;
+      }
+      .rol {
+        color: #007bff;
+      }
+      .permission {
+        color: #28a745;
+      }
+      .permission.active {
+        background: #28a745;
+      }
+      .active .rol {
+        color: white;
+      }
+      .roldesc {
+        text-align: right;
+      }
+      .roldesc .rol {
+        float:left;
+      }
+      .desc {
+        color: #888;
+        font-size: 0.8rem;
+      }
+      .active .desc {
+        color: white;
+      }
+      .common {
+        font-weight: bolder;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <nav class="navbar navbar-dark bg-primary">
+        <a class="navbar-brand" href="#">Google Cloud Role/Permission explorer</a>
+        <form class="form-inline" style="width: 400px;">
+          <input class="form-control mr-sm-2 w-100" ref="filtertext" v-model="filtertext" v-on:change="filter()" placeholder="Search rol, description or permission" />
+        </form>
+      </nav>
+      <div class="loading-wrapper" :class="loaded ? 'd-none' : ''">
+        <div class="m-auto text-center p-5">
+          <div class="spinner-grow text-primary m-auto">
+          </div>
+        </div>
+      </div>
+      <div class="main d-flex">
+        <div style="flex: 1;">
+          <div  class="container-fluid">
+            
+            <div class="card-deck">
+              <div class="card">
+                <div class="card-header bg-primary text-white">
+                  Roles
+                </div>
+                <ul class="list-group list-group-flush scroll">
+                  <li class="list-group-item roldesc" @click="selectRol(rol.rol)" v-for="rol of filteredRoles"  :class="{active: roles.indexOf(rol.rol)>=0}"><span class="text-monospace rol">{{rol.rol}}</span><span class="desc">{{rol.description}}</span></li>
+                </ul>
+              </div>
+              <div class="card">
+                <div class="card-header text-white bg-success">
+                  Permissions
+                </div>
+                <ul class="list-group list-group-flush scroll">
+                  <li class="list-group-item text-monospace permission" :class="{active: p === permission}" @click="selectPermission(p)" v-for="p of filteredPermissions">{{p}}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="container-fluid selected-role-wrapper">
+            <div class="row">
+              <div class="col-4" v-for="r of rolesTable">
+                <div class="card my-3">
+                  <div class="card-header rol text-monospace">
+                    {{r.title}}
+                    <button type="button" class="close" @click="remove(r.title)">
+                      <span>&times;</span>
+                    </button>
+                  </div>
+                  <ul class="list-group list-group-flush " >
+                    <li class="list-group-item text-monospace permission" :class="{'common':p.count!=rolesTable.length, active: p.perm === permission}"  v-for="p of r.perms" @click="selectPermission(p.perm)" >{{p.perm}}</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div><!--left-->
+        <div class="right-panel py-5 px-2 bg-light" >
+          <p>Filter roles or permissions with text filter. Click multiple on roles to show and compare permissions included in selected roles. 
+              Click on permission to show roles that contain that permission.</p>
+          <h6 v-if="permission">
+            Roles with permission <br><strong class="text-monospace permission">{{permission}}</strong>
+          </h6>
+          <h5 v-if="!permission">
+            Select a permission...
+          </h5>
+          <ul class="list-group  list-group-flush">
+            <li class="list-group-item bg-transparent" @click="selectRol(rol[1])" v-for="rol of rolesWithPermission"><span class="desc">{{rol[0]}}</span><span class="text-monospace rol">{{rol[1]}}</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+  <script>
+      const loadData = async () => {
+        const permissions = await (await fetch('/roles')).json();
+        //console.log(permissions);
+        const dictByPermission = permissions.reduce((ac, item) => {
+          ac[item[0]] = item[1];
+          return ac;
+        }, {});
+        const dictByRole = {};
+        permissions.forEach(([permissions, roles]) => {
+          roles.forEach(rol => {
+            dictByRole[rol[1]] = {description:rol[0], rol:rol[1], permissions:((dictByRole[rol[1]] || {}).permissions || []).concat(...permissions)}
+          })
+        });
+        //console.log(dictByPermission);
+        return [dictByPermission, dictByRole];
+      }
+
+      const copyToClipboard = str => {
+        const el = document.createElement('textarea');
+        el.value = str;
+        el.setAttribute('readonly', '');
+        el.style.position = 'absolute';
+        el.style.left = '-9999px';
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      };
+      const loadVue = ([dictByPermission, dictByRole]) => {
+
+        v=new Vue({
+          el:'#app',
+          data: {
+            filtertext: '',
+            dictByPermission,
+            dictByRole,
+            roles: [],
+            permission: '',
+            loaded: true
+          },
+          methods: {
+            remove: function(rol){
+              this.roles = this.roles.filter(r=>r!=rol);
+
+            },
+            selectRol: function(rol) {
+              if (this.roles.indexOf(rol)>=0){
+                this.roles = this.roles.filter(r=>r!=rol);
+                return;
+              }
+              this.roles.push(rol);
+            },
+            filter: ()=>{
+            },
+            selectPermission: function(perm){
+              this.permission=perm;
+            },
+            copy: function(txt){
+              copyToClipboard(txt)
+            }
+          },
+          computed: {
+            rolesWithPermission: function(){
+              return dictByPermission[this.permission];
+            },
+            filteredPermissions: function(){
+              var txt = this.filtertext;
+              if (txt.length<3) return [];
+              return Object.keys(dictByPermission).filter( r=> r.toUpperCase().indexOf(txt.toUpperCase())>=0)
+            },
+            filteredRoles: function(){
+              var txt = this.filtertext;
+              if (txt.length<3) return [];
+              return Object.keys(dictByRole).map( r=> (r + dictByRole[r].description).toUpperCase().indexOf(txt.toUpperCase())>=0 && dictByRole[r]).filter(x=>x)
+            },
+            
+            rolesTable : function(){
+              var count = this.roles.reduce( (acc,r)=>{
+                dictByRole[r].permissions.forEach( p=> acc[p] = (acc[p] || 0)+1);
+                return acc;
+              },{});
+              return this.roles.map( r=>{
+                var perms = dictByRole[r].permissions.map( p=>({
+                  perm: p,
+                  count: count[p]
+                })).sort((a,b)=> b.count - a.count);
+                return {
+                  title:r,
+                  perms 
+                }
+              }).reverse();
+            }
+          },
+          mounted: function(){
+            this.$refs.filtertext.focus();
+          }
+      });
+
+    };
+
+    const main = async() => {
+      loadVue(await loadData());    
+    }
+    main();
+	</script>
+  </body>
+</html>
