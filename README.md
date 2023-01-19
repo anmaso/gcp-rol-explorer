@@ -1,8 +1,13 @@
 GCP rol explorer
 =================
 
-Tool for exploring roles on GCP, since is quite unfriendly to do it on the documentation.
+Tool for exploring roles on GCP.
 
-You can filter by name of the rol, permission or description and navigate through links to other related elements
+You can filter by partial name of the rol, permission or description.
 
-You can compare roles to see different permissions on each rol
+Clicking a role shows the permissions for the role.
+When several roles are selected, common permissions are shown first.
+
+Clicking a permission shows the roles that include that permission.
+
+Clicking a role in the right sidebar selects the role.
