@@ -21,8 +21,8 @@ const getIframeSrc = async () => {
 };
 
 const getDOM = async () => {
-  const src = await getIframeSrc();
-  const rawHtml2 = await (await fetch()(src)).text();
+  //const src = await getIframeSrc();
+  const rawHtml2 = await (await fetch()(BASE + "/iam/docs/permissions-reference")).text();
   return HTMLParser().parse(rawHtml2);
 };
 

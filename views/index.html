@@ -247,12 +247,12 @@
             filteredPermissions: function(){
               var txt = this.filtertext;
               if (txt.length<3) return [];
-              return Object.keys(dictByPermission).filter( r=> r.toUpperCase().indexOf(txt.toUpperCase())>=0)
+              return Object.keys(dictByPermission).filter( r=> r.toUpperCase().indexOf(txt.toUpperCase())>=0).sort()
             },
             filteredRoles: function(){
               var txt = this.filtertext;
               if (txt.length<3) return [];
-              return Object.keys(dictByRole).map( r=> (r + dictByRole[r].description).toUpperCase().indexOf(txt.toUpperCase())>=0 && dictByRole[r]).filter(x=>x)
+              return Object.keys(dictByRole).map( r=> (r + dictByRole[r].description).toUpperCase().indexOf(txt.toUpperCase())>=0 && dictByRole[r]).filter(x=>x).sort((a,b)=>a.rol>b.rol)
             },
             
             rolesTable : function(){
@@ -269,7 +269,7 @@
                   title:r,
                   perms 
                 }
-              }).reverse();
+              }).reverse().sort();
             }
           },
           mounted: function(){
